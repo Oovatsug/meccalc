@@ -1,0 +1,217 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1" />
+<title>MecCalc - Calculadora Técnica para Mecânica</title>
+<link rel="stylesheet" href="style.css">
+</head>
+<body>
+  <h1>MecCalc - Calculadora Técnica para Mecânica</h1>
+  <div class="container">
+
+    <!-- Conversão mm ↔ polegadas -->
+    <section aria-label="Conversão de milímetros para polegadas e vice-versa">
+      <h2>Conversão mm ↔ polegadas</h2>
+      <label for="mmInput">Milímetros (mm):</label>
+      <input type="number" id="mmInput" placeholder="Digite valor em mm" step="any" />
+      <label for="inchInput">Polegadas (in):</label>
+      <input type="number" id="inchInput" placeholder="Digite valor em polegadas" step="any" />
+      <button id="convertLengthBtn">Converter</button>
+      <div class="output" id="lengthResult"></div>
+      <small>Nota: A conversão de mm para polegadas exibe frações comuns.</small>
+    </section>
+
+    <!-- Cálculo de RPM -->
+    <section aria-label="Cálculo de RPM usando velocidade de corte e diâmetro">
+      <h2>Cálculo de RPM</h2>
+      <label for="vcInput">Velocidade de corte (m/min):</label>
+      <input type="number" id="vcInput" placeholder="Ex: 100" step="any" />
+      <label for="diameterInput">Diâmetro (mm):</label>
+      <input type="number" id="diameterInput" placeholder="Ex: 50" step="any" />
+      <button id="calcRpmBtn">Calcular RPM</button>
+      <div class="output" id="rpmResult"></div>
+      <small>Fórmula: RPM = (1000 × Vc) / (π × D)</small>
+    </section>
+
+    <!-- Relação de polias -->
+    <section aria-label="Cálculo da relação de polias">
+      <h2>Relação de polias</h2>
+      <label for="d1Input">Diâmetro Polia 1 (D1, mm):</label>
+      <input type="number" id="d1Input" placeholder="Ex: 100" step="any" />
+      <label for="n1Input">RPM Polia 1 (N1, rpm):</label>
+      <input type="number" id="n1Input" placeholder="Ex: 1500" step="any" />
+      <label for="d2Input">Diâmetro Polia 2 (D2, mm):</label>
+      <input type="number" id="d2Input" placeholder="Ex: 50" step="any" />
+      <button id="calcPulleyBtn">Calcular RPM Polia 2 (N2)</button>
+      <div class="output" id="pulleyResult"></div>
+      <small>Fórmula: D1 × N1 = D2 × N2 → N2 = (D1 × N1) / D2</small>
+    </section>
+
+    <!-- Cálculo de avanço para roscas múltiplas -->
+    <section aria-label="Cálculo de avanço para roscas de múltiplas entradas">
+      <h2>Cálculo de avanço (roscas múltiplas entradas)</h2>
+      <label for="pitchInput">Passo da rosca (mm):</label>
+      <input type="number" id="pitchInput" placeholder="Ex: 1.5" step="any" />
+      <label for="startsInput">Número de entradas:</label>
+      <input type="number" id="startsInput" placeholder="Ex: 3" min="1" step="1" />
+      <button id="calcFeedBtn">Calcular Avanço</button>
+      <div class="output" id="feedResult"></div>
+      <small>Fórmula: Avanço = Passo × Número de entradas</small>
+    </section>
+
+    <!-- Cálculo de ângulo de torneamento de cones -->
+    <section aria-label="Cálculo de ângulo de torneamento de cones">
+      <h2>Ângulo de torneamento de cones</h2>
+      <label for="diameterLargeInput">Diâmetro maior (D1, mm):</label>
+      <input type="number" id="diameterLargeInput" placeholder="Ex: 100" step="any" />
+      <label for="diameterSmallInput">Diâmetro menor (D2, mm):</label>
+      <input type="number" id="diameterSmallInput" placeholder="Ex: 80" step="any" />
+      <label for="lengthConeInput">Comprimento do cone (L, mm):</label>
+      <input type="number" id="lengthConeInput" placeholder="Ex: 150" step="any" />
+      <button id="calcConeAngleBtn">Calcular Ângulo</button>
+      <div class="output" id="coneAngleResult"></div>
+      <small>Fórmula: Ângulo = arctan((D1 - D2) / (2 × L)) em graus</small>
+    </section>
+
+  </div>
+
+<script>
+  // Função para converter decimal para polegada fracionada comum
+  function decimalToFraction(decimal, maxDenominator = 64) {
+    // Encontrar a fração mais próxima usando algoritmo de aproximação de frações
+    let numerator = 1;
+    let denominator = 1;
+    let minDiff = Math.abs(decimal - numerator / denominator);
+
+    for (let d = 1; d <= maxDenominator; d++) {
+      let n = Math.round(decimal * d);
+      let diff = Math.abs(decimal - n / d);
+      if (diff < minDiff) {
+        numerator = n;
+        denominator = d;
+        minDiff = diff;
+      }
+    }
+
+    // Simplificar a fração
+    function gcd(a, b) {
+      return b ? gcd(b, a % b) : a;
+    }
+    const divisor = gcd(numerator, denominator);
+    numerator /= divisor;
+    denominator /= divisor;
+
+    return { numerator, denominator };
+  }
+
+  // Conversão mm ↔ polegadas com fração
+  const mmInput = document.getElementById('mmInput');
+  const inchInput = document.getElementById('inchInput');
+  const convertLengthBtn = document.getElementById('convertLengthBtn');
+  const lengthResult = document.getElementById('lengthResult');
+
+  convertLengthBtn.addEventListener('click', () => {
+    const mm = parseFloat(mmInput.value);
+    const inch = parseFloat(inchInput.value);
+
+    if (!isNaN(mm) && mm > 0) {
+      // mm para polegadas
+      const totalInches = mm / 25.4;
+      const whole = Math.floor(totalInches);
+      const fracDecimal = totalInches - whole;
+
+      if (fracDecimal < 0.001) {
+        // Quase inteiro
+        lengthResult.textContent = `${mm.toFixed(3)} mm = ${whole}" (polegadas inteiras)`;
+      } else {
+        const frac = decimalToFraction(fracDecimal);
+        lengthResult.textContent = `${mm.toFixed(3)} mm = ${whole > 0 ? whole + ' ' : ''}${frac.numerator}/${frac.denominator}" (polegadas fracionadas)`;
+      }
+    } else if (!isNaN(inch) && inch > 0) {
+      // polegadas para mm
+      const converted = inch * 25.4;
+      lengthResult.textContent = `${inch.toFixed(4)} polegadas = ${converted.toFixed(3)} mm`;
+    } else {
+      lengthResult.textContent = 'Por favor, insira um valor válido em mm ou polegadas.';
+    }
+  });
+
+  // Cálculo de RPM
+  const vcInput = document.getElementById('vcInput');
+  const diameterInput = document.getElementById('diameterInput');
+  const calcRpmBtn = document.getElementById('calcRpmBtn');
+  const rpmResult = document.getElementById('rpmResult');
+
+  calcRpmBtn.addEventListener('click', () => {
+    const vc = parseFloat(vcInput.value);
+    const d = parseFloat(diameterInput.value);
+    if (vc > 0 && d > 0) {
+      const rpm = (1000 * vc) / (Math.PI * d);
+      rpmResult.textContent = `RPM = ${rpm.toFixed(0)} rpm`;
+    } else {
+      rpmResult.textContent = 'Informe valores positivos para velocidade de corte e diâmetro.';
+    }
+  });
+
+  // Relação de polias
+  const d1Input = document.getElementById('d1Input');
+  const n1Input = document.getElementById('n1Input');
+  const d2Input = document.getElementById('d2Input');
+  const calcPulleyBtn = document.getElementById('calcPulleyBtn');
+  const pulleyResult = document.getElementById('pulleyResult');
+
+  calcPulleyBtn.addEventListener('click', () => {
+    const d1 = parseFloat(d1Input.value);
+    const n1 = parseFloat(n1Input.value);
+    const d2 = parseFloat(d2Input.value);
+    if (d1 > 0 && n1 > 0 && d2 > 0) {
+      const n2 = (d1 * n1) / d2;
+      pulleyResult.textContent = `RPM Polia 2 (N2) = ${n2.toFixed(0)} rpm`;
+    } else {
+      pulleyResult.textContent = 'Informe valores positivos para D1, N1 e D2.';
+    }
+  });
+
+  // Cálculo de avanço para roscas múltiplas entradas
+  const pitchInput = document.getElementById('pitchInput');
+  const startsInput = document.getElementById('startsInput');
+  const calcFeedBtn = document.getElementById('calcFeedBtn');
+  const feedResult = document.getElementById('feedResult');
+
+  calcFeedBtn.addEventListener('click', () => {
+    const pitch = parseFloat(pitchInput.value);
+    const starts = parseInt(startsInput.value);
+    if (pitch > 0 && starts > 0) {
+      const feed = pitch * starts;
+      feedResult.textContent = `Avanço = ${feed.toFixed(3)} mm/rev`;
+    } else {
+      feedResult.textContent = 'Informe passo e número de entradas válidos.';
+    }
+  });
+
+  // Cálculo de ângulo de torneamento de cones
+  const diameterLargeInput = document.getElementById('diameterLargeInput');
+  const diameterSmallInput = document.getElementById('diameterSmallInput');
+  const lengthConeInput = document.getElementById('lengthConeInput');
+  const calcConeAngleBtn = document.getElementById('calcConeAngleBtn');
+  const coneAngleResult = document.getElementById('coneAngleResult');
+
+  calcConeAngleBtn.addEventListener('click', () => {
+    const D1 = parseFloat(diameterLargeInput.value);
+    const D2 = parseFloat(diameterSmallInput.value);
+    const L = parseFloat(lengthConeInput.value);
+
+    if (D1 > 0 && D2 > 0 && L > 0 && D1 > D2) {
+      // Ângulo em radianos
+      const angleRad = Math.atan((D1 - D2) / (2 * L));
+      // Converter para graus
+      const angleDeg = angleRad * (180 / Math.PI);
+      coneAngleResult.textContent = `Ângulo do cone = ${angleDeg.toFixed(2)}°`;
+    } else {
+      coneAngleResult.textContent = 'Informe valores válidos e D1 > D2.';
+    }
+  });
+</script>
+</body>
+</html>
